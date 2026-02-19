@@ -71,33 +71,63 @@ def get_available_models() -> List[Tuple[str, str]]:
 
     try:
         import folder_paths
-        models_dir = folder_paths.get_folder_paths("checkpoints")[0]
-        vibevoice_dir = os.path.join(os.path.dirname(models_dir), "vibevoice")
-
-        if not os.path.exists(vibevoice_dir):
-            os.makedirs(vibevoice_dir, exist_ok=True)
-            logger.info(f"Created vibevoice models directory: {vibevoice_dir}")
-            _model_cache["models"] = []
-            _model_cache["last_scan_time"] = current_time
-            return []
+        
+        # Register vibevoice folder if not present
+        if "vibevoice" not in folder_paths.folder_names_and_paths:
+            if hasattr(folder_paths, "models_dir"):
+                base_path = os.path.join(folder_paths.models_dir, "vibevoice")
+            else:
+                try:
+                    models_dir = folder_paths.get_folder_paths("checkpoints")[0]
+                    base_path = os.path.join(os.path.dirname(models_dir), "vibevoice")
+                except:
+                    # Fallback to a relative path assuming we're in custom_nodes/VibeVoice/nodes
+                    base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))), "models", "vibevoice")
+            
+            folder_paths.add_model_folder_path("vibevoice", base_path)
+            
+        vibevoice_paths = folder_paths.get_folder_paths("vibevoice")
+        
+        # Ensure first directory exists if we have paths
+        if vibevoice_paths and not os.path.exists(vibevoice_paths[0]):
+             try:
+                 os.makedirs(vibevoice_paths[0], exist_ok=True)
+                 logger.info(f"Created vibevoice models directory: {vibevoice_paths[0]}")
+             except:
+                 pass
 
         # First, collect all valid model folders
         valid_folders = []
-        logger.debug(f"Scanning vibevoice directory: {vibevoice_dir}")
-        for folder in os.listdir(vibevoice_dir):
-            folder_path = os.path.join(vibevoice_dir, folder)
-
-            # Skip hidden folders, loras, and non-directories
-            if folder.startswith(".") or folder == "loras" or not os.path.isdir(folder_path):
-                logger.debug(f"Skipping: {folder}")
+        seen_folders = set()
+        
+        for vibevoice_dir in vibevoice_paths:
+            if not os.path.exists(vibevoice_dir):
                 continue
-
-            logger.debug(f"Checking folder: {folder}")
-            # Check if it's a valid model folder
-            if is_valid_model_folder(folder_path):
-                valid_folders.append(folder)
-            else:
-                logger.debug(f"Folder {folder} is not a valid model folder")
+                
+            logger.debug(f"Scanning vibevoice directory: {vibevoice_dir}")
+            try:
+                folders = os.listdir(vibevoice_dir)
+            except:
+                continue
+                
+            for folder in folders:
+                if folder in seen_folders:
+                    continue
+                    
+                folder_path = os.path.join(vibevoice_dir, folder)
+    
+                # Skip hidden folders, loras, and non-directories
+                if folder.startswith(".") or folder == "loras" or not os.path.isdir(folder_path):
+                    logger.debug(f"Skipping: {folder}")
+                    continue
+    
+                logger.debug(f"Checking folder: {folder}")
+                # Check if it's a valid model folder
+                if is_valid_model_folder(folder_path):
+                    valid_folders.append(folder)
+                    seen_folders.add(folder)
+                else:
+                    logger.debug(f"Folder {folder} is not a valid model folder")
 
         # Now transform folder names with duplicate detection
         models = []
@@ -295,19 +325,34 @@ def find_model_files_path(model_folder: str) -> Optional[str]:
     """
     try:
         import folder_paths
-        models_dir = folder_paths.get_folder_paths("checkpoints")[0]
-        vibevoice_dir = os.path.join(os.path.dirname(models_dir), "vibevoice")
-        base_path = os.path.join(vibevoice_dir, model_folder)
-
-        # Use recursive search to find model files
-        result = find_model_files_path_recursive(base_path)
-
-        if result:
-            logger.info(f"Found model files at: {result}")
-        else:
-            logger.warning(f"No valid model files found for: {model_folder}")
-
-        return result
+        if "vibevoice" not in folder_paths.folder_names_and_paths:
+             # Should have been registered by get_available_models, but safe fallback
+             if hasattr(folder_paths, "models_dir"):
+                base_path = os.path.join(folder_paths.models_dir, "vibevoice")
+             else:
+                try:
+                    models_dir = folder_paths.get_folder_paths("checkpoints")[0]
+                    base_path = os.path.join(os.path.dirname(models_dir), "vibevoice")
+                except:
+                    base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))), "models", "vibevoice")
+             folder_paths.add_model_folder_path("vibevoice", base_path)
+             
+        vibevoice_paths = folder_paths.get_folder_paths("vibevoice")
+        
+        for vibevoice_dir in vibevoice_paths:
+            base_path = os.path.join(vibevoice_dir, model_folder)
+            if not os.path.exists(base_path):
+                continue
+                
+            # Use recursive search to find model files
+            result = find_model_files_path_recursive(base_path)
+    
+            if result:
+                logger.info(f"Found model files at: {result}")
+                return result
+                
+        logger.warning(f"No valid model files found for: {model_folder}")
+        return None
 
     except Exception as e:
         logger.error(f"Error finding model files: {e}")
