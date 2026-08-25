@@ -213,12 +213,14 @@ class VibeVoiceForConditionalGenerationInference(VibeVoicePreTrainedModel, Gener
     def semantic_connector(self):
         return self.model.semantic_connector
         
-    def tie_weights(self):
+    def tie_weights(self, **kwargs):
         """
         Tie the weights between the input embeddings and the output embeddings.
         """
         # Tie lm_head.weight to language_model.embed_tokens.weight
-        if not getattr(self.config, 'tie_word_embeddings', False):
+        # Note: tie_word_embeddings lives on config.decoder_config, not on the
+        # top-level VibeVoiceConfig (which never promotes it up).
+        if not getattr(self.config.decoder_config, 'tie_word_embeddings', False):
             return
          
         if hasattr(self, 'lm_head') and hasattr(self.model.language_model, 'embed_tokens'):
@@ -364,9 +366,8 @@ class VibeVoiceForConditionalGenerationInference(VibeVoicePreTrainedModel, Gener
             )
 
         generation_config, model_kwargs = self._prepare_generation_config(
-            generation_config, 
-            True, 
-            speech_start_id=tokenizer.speech_start_id, 
+            generation_config,
+            speech_start_id=tokenizer.speech_start_id,
             speech_end_id=tokenizer.speech_end_id, 
             speech_diffusion_id=tokenizer.speech_diffusion_id, 
             **kwargs
@@ -621,7 +622,7 @@ class VibeVoiceForConditionalGenerationInference(VibeVoicePreTrainedModel, Gener
             if not kwargs.get('refresh_negative', True):
                 negative_model_inputs = self.prepare_inputs_for_generation(negative_input_ids, **negative_model_kwargs)
                 # Forward negative pass through the model
-                if negative_model_inputs['inputs_embeds'] is None and inputs_embeds is not None:
+                if negative_model_inputs.get('inputs_embeds') is None and inputs_embeds is not None:
                     negative_model_inputs['inputs_embeds'] = inputs_embeds
                     negative_model_inputs['input_ids'] = None
 
@@ -712,7 +713,7 @@ class VibeVoiceForConditionalGenerationInference(VibeVoicePreTrainedModel, Gener
                 if kwargs.get('refresh_negative', True):
                     negative_model_inputs = self.prepare_inputs_for_generation(negative_input_ids, **negative_model_kwargs)
                     # Forward negative pass through the model
-                    if negative_model_inputs['inputs_embeds'] is None and inputs_embeds is not None:
+                    if negative_model_inputs.get('inputs_embeds') is None and inputs_embeds is not None:
                         negative_model_inputs['inputs_embeds'] = inputs_embeds
                         negative_model_inputs['input_ids'] = None
 
@@ -864,7 +865,7 @@ class VibeVoiceForConditionalGenerationInference(VibeVoicePreTrainedModel, Gener
         return speech[: len(speech) // 2]
     
 
-AutoModelForCausalLM.register(VibeVoiceConfig, VibeVoiceForConditionalGenerationInference)
+AutoModelForCausalLM.register(VibeVoiceConfig, VibeVoiceForConditionalGenerationInference, exist_ok=True)
 
 __all__ = [
     "VibeVoiceForConditionalGenerationInference",

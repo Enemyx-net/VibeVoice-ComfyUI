@@ -965,8 +965,34 @@ class BaseVibeVoiceNode:
                             # Configure 8-bit quantization
                             bnb_config = BitsAndBytesConfig(
                                 load_in_8bit=True,
-                                bnb_8bit_compute_dtype=torch.bfloat16
+                                bnb_8bit_compute_dtype=torch.bfloat16,
+                                llm_int8_skip_modules=[
+                                    "lm_head",
+                                    "prediction_head",
+                                    "acoustic_connector",
+                                    "semantic_connector",
+                                    "acoustic_tokenizer",
+                                    "semantic_tokenizer",
+                                    "model.prediction_head",
+                                    "model.acoustic_connector",
+                                    "model.semantic_connector",
+                                    "model.acoustic_tokenizer",
+                                    "model.semantic_tokenizer",
+                                ]
                             )
+
+                            model_config = VibeVoiceInferenceModel.config_class.from_pretrained(
+                                actual_model_path,
+                                local_files_only=True,
+                            )
+                            model_config.quantization_config["llm_int8_skip_modules"].extend([
+                                "model.prediction_head",
+                                "model.acoustic_connector",
+                                "model.semantic_connector",
+                                "model.acoustic_tokenizer",
+                                "model.semantic_tokenizer",
+                            ])
+                            model_kwargs["config"] = model_config
 
                         model_kwargs["quantization_config"] = bnb_config
                         model_kwargs["device_map"] = "cuda"  # Force CUDA for quantized models
