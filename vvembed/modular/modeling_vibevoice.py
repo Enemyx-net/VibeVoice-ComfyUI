@@ -272,7 +272,7 @@ class VibeVoiceForConditionalGeneration(VibeVoicePreTrainedModel):
     def get_decoder(self):
         return self.model.language_model
 
-    def tie_weights(self):
+    def tie_weights(self, **kwargs):
         """
         Tie the weights between the input embeddings and the output embeddings.
         """
@@ -512,8 +512,8 @@ class VibeVoiceForConditionalGeneration(VibeVoicePreTrainedModel):
             attentions=outputs.attentions,
         )
 
-AutoModel.register(VibeVoiceConfig, VibeVoiceModel)
-AutoModelForCausalLM.register(VibeVoiceConfig, VibeVoiceForConditionalGeneration)
+AutoModel.register(VibeVoiceConfig, VibeVoiceModel, exist_ok=True)
+AutoModelForCausalLM.register(VibeVoiceConfig, VibeVoiceForConditionalGeneration, exist_ok=True)
 
 __all__ = [
     "VibeVoiceModel",

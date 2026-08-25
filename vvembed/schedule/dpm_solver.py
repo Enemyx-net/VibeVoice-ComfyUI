@@ -80,7 +80,7 @@ def betas_for_alpha_bar(
         t1 = i / num_diffusion_timesteps
         t2 = (i + 1) / num_diffusion_timesteps
         betas.append(min(1 - alpha_bar_fn(t2) / alpha_bar_fn(t1), max_beta))
-    return torch.tensor(betas, dtype=torch.float32)
+    return torch.tensor(betas, dtype=torch.float32, device="cpu")
 
 
 # Copied from diffusers.schedulers.scheduling_ddim.rescale_zero_terminal_snr
@@ -230,12 +230,12 @@ class DPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
             deprecate("algorithm_types dpmsolver and sde-dpmsolver", "1.0.0", deprecation_message)
 
         if trained_betas is not None:
-            self.betas = torch.tensor(trained_betas, dtype=torch.float32)
+            self.betas = torch.tensor(trained_betas, dtype=torch.float32, device="cpu")
         elif beta_schedule == "linear":
-            self.betas = torch.linspace(beta_start, beta_end, num_train_timesteps, dtype=torch.float32)
+            self.betas = torch.linspace(beta_start, beta_end, num_train_timesteps, dtype=torch.float32, device="cpu")
         elif beta_schedule == "scaled_linear":
             # this schedule is very specific to the latent diffusion model.
-            self.betas = torch.linspace(beta_start**0.5, beta_end**0.5, num_train_timesteps, dtype=torch.float32) ** 2
+            self.betas = torch.linspace(beta_start**0.5, beta_end**0.5, num_train_timesteps, dtype=torch.float32, device="cpu") ** 2
         elif beta_schedule == "squaredcos_cap_v2" or beta_schedule == "cosine":
             # Glide cosine schedule
             self.betas = betas_for_alpha_bar(num_train_timesteps, alpha_transform_type="cosine")
@@ -287,7 +287,7 @@ class DPMSolverMultistepScheduler(SchedulerMixin, ConfigMixin):
         # setable values
         self.num_inference_steps = None
         timesteps = np.linspace(0, num_train_timesteps - 1, num_train_timesteps, dtype=np.float32)[::-1].copy()
-        self.timesteps = torch.from_numpy(timesteps)
+        self.timesteps = torch.from_numpy(timesteps).to(device="cpu")
         self.model_outputs = [None] * solver_order
         self.lower_order_nums = 0
         self._step_index = None

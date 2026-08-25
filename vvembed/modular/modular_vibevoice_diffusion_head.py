@@ -280,7 +280,7 @@ class VibeVoiceDiffusionHead(PreTrainedModel):
         return x
 
 
-AutoModel.register(VibeVoiceDiffusionHeadConfig, VibeVoiceDiffusionHead)
+AutoModel.register(VibeVoiceDiffusionHeadConfig, VibeVoiceDiffusionHead, exist_ok=True)
 
 __all__ = [
     "VibeVoiceDiffusionHead",
